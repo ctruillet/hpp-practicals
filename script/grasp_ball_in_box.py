@@ -1,7 +1,18 @@
+"""
+TP Motion Planning
+3A SRI 2020
+Maxence Da Silva - Clément Truillet
+
+"""
+
 from math import sqrt
 from hpp import Transform
-from hpp.corbaserver.manipulation import ConstraintGraph
+from hpp.corbaserver.manipulation import ConstraintGraph,Constraints
+from hpp.corbaserver import Client
+Client ().problem.resetProblem ()
 from manipulation import robot, vf, ps, Ground, Box, Pokeball, PathPlayer, gripperName, ballName
+
+
 
 vf.loadEnvironmentModel (Ground, 'ground')
 vf.loadEnvironmentModel (Box, 'box')
@@ -21,8 +32,69 @@ q1 = [0, -1.57, 1.57, 0, 0, 0, .3, 0, 0.025, 0, 0, 0, 1]
 graph = ConstraintGraph (robot, 'graph')
 
 
+graph.createNode (['grasp-placement', 'ball-above-ground', 'gripper-above-ball', 'grasp', 'placement'])
+
+graph.createEdge ('placement', 'placement', 'transit', 1, 'placement')
+graph.createEdge ('grasp', 'grasp', 'transfer', 1, 'grasp')
+graph.createEdge ('grasp-placement', 'gripper-above-ball', 'move-gripper-up', 1, 'placement')
+graph.createEdge ('grasp-placement', 'ball-above-ground', 'take-ball-up', 1, 'grasp')
+graph.createEdge ('gripper-above-ball', 'grasp-placement', 'grasp-ball', 1, 'placement')
+graph.createEdge ('gripper-above-ball', 'placement', 'move-gripper-away',1, 'placement')
+graph.createEdge ('ball-above-ground', 'grasp-placement', 'put-ball-down', 1, 'grasp')
+graph.createEdge ('ball-above-ground', 'grasp', 'take-ball-away', 1, 'grasp')
+graph.createEdge ('grasp', 'ball-above-ground', 'approach-ground', 1, 'grasp')
+graph.createEdge ('placement', 'gripper-above-ball', 'approach-ball', 1, 'placement')
+
+
+
+#  Create complement constraint
+ps.createTransformationConstraint ('grasp', gripperName, ballName, [0, .137, 0, 0.5, 0.5, -0.5, 0.5], [True,  True,  True,  True,  True,  True, ])
+ps.createTransformationConstraint ('placement/complement', '', ballName, [0, 0, 0.025, 0, 0, 0, 1], [True,  True,  False, False, False, True, ])
+ps.createTransformationConstraint ('approachStart', gripperName,    ballName, [0, .25, 0, 0.5, 0.5, -0.5, 0.5], [True,  True,  True,  True,  True,  True, ])
+ps.createTransformationConstraint ('approachEnd', '', ballName, [0, 0, 0.3, 0, 0, 0, 1], [False, False, True,  True,  True,  False,])
+ps.createTransformationConstraint ('placement', '', ballName, [0, 0, 0.025, 0, 0, 0, 1], [False, False, True,  True,  True,  False,])
+
+ps.setConstantRightHandSide ('placement', True)
+ps.setConstantRightHandSide ('approachStart', True)
+ps.setConstantRightHandSide ('approachEnd', True)
+ps.setConstantRightHandSide ('placement/complement', False)
+
+
+## Set constraints of nodes and edges
+graph.addConstraints (node='placement',
+                      constraints = Constraints (numConstraints = ['placement'],))
+graph.addConstraints (node='gripper-above-ball', 
+                      constraints = Constraints (numConstraints = ['placement', 'approachStart']))
+graph.addConstraints (node='grasp-placement' , 
+                      constraints = Constraints (numConstraints = ['grasp', 'placement']))
+graph.addConstraints (node='ball-above-ground' , 
+                      constraints = Constraints (numConstraints = ['grasp', 'approachEnd']))
+graph.addConstraints (node='grasp' , 
+                      constraints = Constraints (numConstraints = ['grasp']))
+
+graph.addConstraints (edge='transit' , 
+                      constraints = Constraints (numConstraints = ['placement/complement']))
+graph.addConstraints (edge='approach-ball' , 
+                      constraints = Constraints (numConstraints = ['placement/complement']))
+graph.addConstraints (edge='move-gripper-away', 
+                      constraints = Constraints (numConstraints = ['placement/complement']))
+graph.addConstraints (edge='move-gripper-up' , 
+                      constraints = Constraints (numConstraints = ['placement/complement']))
+graph.addConstraints (edge='grasp-ball' , 
+                      constraints = Constraints (numConstraints = ['placement/complement']))
+graph.addConstraints (edge='take-ball-up' , 
+                      constraints = Constraints (numConstraints = ['placement/complement']))
+graph.addConstraints (edge='put-ball-down' , 
+                      constraints = Constraints (numConstraints = ['placement/complement']))
+
+graph.addConstraints (edge='transfer', 
+                      constraints = Constraints ())
+graph.addConstraints (edge='take-ball-away', 
+                      constraints = Constraints ())
+
+
 ps.selectPathValidation ("Discretized", 0.01)
-ps.selectPathProjector ("Progressive", 0.1)
+ps.selectPathProjector  ("Progressive", 0.1)
 graph.initialize ()
 
 res, q_init, error = graph.applyNodeConstraints ('placement', q1)
@@ -34,7 +106,11 @@ res, q_goal, error = graph.applyNodeConstraints ('placement', q2)
 ps.setInitialConfig (q_init)
 ps.addGoalConfig (q_goal)
 
-# v = vf.createViewer ()
-# pp = PathPlayer (v)
-# v (q1)
+v = vf.createViewer ()
+pp = PathPlayer (v)
 
+def solve():
+    print("Recherche de solution en cours ...")
+    ps.solve()
+    print("Une solution a été trouvée")
+    pp(0)
