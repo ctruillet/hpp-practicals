@@ -50,7 +50,7 @@ graph.createEdge ('placement', 'gripper-above-ball', 'approach-ball', 1, 'placem
 #  Create complement constraint
 ps.createTransformationConstraint ('grasp', gripperName, ballName, [0, .137, 0, 0.5, 0.5, -0.5, 0.5], [True,  True,  True,  True,  True,  True, ])
 ps.createTransformationConstraint ('placement/complement', '', ballName, [0, 0, 0.025, 0, 0, 0, 1], [True,  True,  False, False, False, True, ])
-ps.createTransformationConstraint ('approachStart', gripperName,    ballName, [0, .25, 0, 0.5, 0.5, -0.5, 0.5], [True,  True,  True,  True,  True,  True, ])
+ps.createTransformationConstraint ('approachStart', gripperName, ballName, [0, .25, 0, 0.5, 0.5, -0.5, 0.5], [True,  True,  True,  True,  True,  True, ])
 ps.createTransformationConstraint ('approachEnd', '', ballName, [0, 0, 0.3, 0, 0, 0, 1], [False, False, True,  True,  True,  False,])
 ps.createTransformationConstraint ('placement', '', ballName, [0, 0, 0.025, 0, 0, 0, 1], [False, False, True,  True,  True,  False,])
 
